@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+
+  app:
+    build:
+      context: ./docker/php
+      args:
+        UID: ${UID}
+        GID: ${GID}
+    restart: unless-stopped
+    volumes:
+      - ./backend:/var/www/html
+    environment:
+      UID: ${UID}
+      GID: ${GID}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - btclott
+
+  nginx:
+    build:
+      context: ./docker/nginx
+    restart: unless-stopped
+    volumes:
+      - ./backend:/var/www/html
+    depends_on:
+      - app
+    networks:
+      - btclott
+
+  db:
+    image: mariadb:11.3
+    restart: unless-stopped
+
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${DB_DATABASE}
+      MARIADB_USER: ${DB_USERNAME}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+
+    volumes:
+      - ./db_data:/var/lib/mysql
+
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb -u root -p${DB_ROOT_PASSWORD} -e 'SELECT 1;'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+    networks:
+      - btclott
+
+networks:
+  btclott:
+    external: true
